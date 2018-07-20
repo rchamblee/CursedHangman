@@ -1,0 +1,139 @@
+#!/usr/bin/python3
+import curses
+
+screen = curses.initscr()
+curses.noecho()
+curses.cbreak()
+screen.refresh()
+
+def get_random_word(f, chunk_size = 16):
+	import os
+	import random
+	with open(f, 'rb') as f_handle:
+		f_handle.seek(0,os.SEEK_END)
+		size = f_handle.tell()
+		i = random.randint(0, size)
+		while True:
+			i -= chunk_size
+			if i < 0:
+				chunk_size += i
+				i = 0
+			f_handle.seek(i, os.SEEK_SET)
+			chunk = f_handle.read(chunk_size)
+			i_newline = chunk.rfind(b'\n')
+			if i_newline != -1:
+				i += i_newline + 1
+				break
+			if i == 0:
+				break
+
+		f_handle.seek(i, os.SEEK_SET)
+		return str(f_handle.readline())[2:-3]
+
+def iniRound(hmWin,gWin,word):
+	letters = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	wordSolved = 0
+	falseGuesses = 0
+	letterUsed = True
+	blanks = ['_'] * len(list(word))
+	correctSum = 0
+	hmWin.erase()
+	hmWin.box()
+	outcomeBox.erase()
+	outcomeBox.refresh()
+	while(wordSolved == 0):
+		guessInWord = 0
+		placeInWord = 0
+		drawHangman(hmWin, falseGuesses)
+		
+		gWin.erase()
+		gWin.box()
+		gWin.addstr(1,1,"Letters remaining:")
+		gWin.addstr(2,1,'|'.join(letters))
+		gWin.addstr(5,1,' '.join(blanks))
+		gWin.refresh()
+		
+		u_input = screen.getkey()
+		if(u_input.upper() in letters):
+			letterUsed = False
+		else:
+			letterUsed = True
+			while(letterUsed):
+				gWin.addnstr(6,1,'Letter ' + u_input + ' already attempted!',26)
+				gWin.refresh()
+				u_input = screen.getkey()
+				if(u_input.upper() in letters):
+					letterUsed = False
+			
+		
+		for i in list(word.upper()):
+			if(u_input.upper() == i):
+				guessInWord = 1
+				blanks[placeInWord] = u_input
+				correctSum = correctSum + 1
+			placeInWord = placeInWord + 1
+			
+		if(correctSum == len(word)):
+			outcomeBox.addstr(1,1,'WINNER!')
+#			outcomeBox.addstr(1,1,str(len(word)))
+			outcomeBox.box()
+			outcomeBox.refresh()
+			wordSolved = 1
+		if(guessInWord == 0):
+			falseGuesses = falseGuesses + 1
+		if(falseGuesses == 6):
+			outcomeBox.addstr(1,1,'YOU LOSE! The word was: ' 
+			+ str(word))
+			outcomeBox.box()
+			outcomeBox.refresh()
+			wordSolved = 1
+			
+		letters.remove(u_input.upper())
+
+def drawHangman(window,falseguesses):
+	window.addstr(7,5,'===')
+	window.addch(6,6,'|')
+	window.addch(5,6,'|')
+	window.addch(4,6,'|')
+	window.addch(3,6,'|')
+	window.addstr(2,3,'|  |')
+	window.addstr(1,4,'__')
+	if(falseguesses == 1):
+		window.addch(3,3,'o')
+	elif(falseguesses == 2):
+		window.addch(4,3,'|')
+	elif(falseguesses == 3):
+		window.addch(4,2,'/')
+	elif(falseguesses == 4):
+		window.addch(4,4,'\\')
+	elif(falseguesses == 5):
+		window.addch(5,2,'/')
+	elif(falseguesses == 6):
+		window.addch(5,4,'\\')
+	hangmanBox.refresh()
+
+try: 
+	hangmanBox = curses.newwin(10,15,0,0)
+	guessingBox = curses.newwin(10,60,0,16)
+	outcomeBox = curses.newwin(10,76,11,0)
+	
+	guessingBox.box()
+	hangmanBox.box(0,0)
+	while(True):
+		try:
+			iniRound(hangmanBox,guessingBox,get_random_word("chmWords"))
+		except:
+			guessingBox.addstr(5,1,'Game exit. (Perhaps the word file has been misplaced?)')
+			guessingBox.refresh()
+		
+		outcomeBox.addstr(2,1,'Another round? (Y/n)')
+		outcomeBox.refresh()
+		newRound = (screen.getkey()).upper()
+		if(newRound == "N"):
+			break
+finally:
+	curses.echo()
+	curses.nocbreak()
+	curses.endwin()
+
+
